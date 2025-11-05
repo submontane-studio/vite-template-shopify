@@ -1,0 +1,6 @@
+{
+  "name": "vite-template-shopify",
+  "display": "Shopify + Vite (SUBMONTANE STUDIO)",
+  "description": "A modern Shopify theme development setup powered by Vite, Sharp, and Biome.",
+  "tags": ["vite", "shopify", "biome", "sharp"]
+}
