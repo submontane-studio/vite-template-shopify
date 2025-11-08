@@ -7,10 +7,10 @@
     "dev:vite": "vite build --watch",
     "dev:shopify": "shopify theme dev --path ../shopify-theme",
     "dev": "concurrently \"npm run dev:vite\" \"npm run dev:shopify\"",
-    "build": "bun run lint && vite build && shopify theme push --path ../shopify-theme --force",
+    "build": "bun run lint && vite build",
     "preview": "vite preview",
-    "lint": "biome check .",
-    "fix": "biome check . --apply"
+    "lint": "biome check src vite.config.ts biome.json package.json tsconfig.json",
+    "fix": "biome format . --write"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.2",
@@ -30,6 +30,7 @@
     "vite": "npm:rolldown-vite@7.1.14"
   },
   "dependencies": {
+    "fast-glob": "^3.3.3",
     "vite-plugin-shopify": "^4.0.2"
   }
 }
