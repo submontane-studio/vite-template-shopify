@@ -1,72 +1,133 @@
+import fs from "node:fs/promises";
 import path from "node:path";
 import autoprefixer from "autoprefixer";
 import cssnano from "cssnano";
-import glob from "fast-glob";
+import sharp from "sharp";
+import type { Plugin } from "vite";
 import { defineConfig } from "vite";
 import checker from "vite-plugin-checker";
-import { ViteImageOptimizer } from "vite-plugin-image-optimizer";
 import shopify from "vite-plugin-shopify";
+import { viteStaticCopy } from "vite-plugin-static-copy";
 
-// 画像のルートディレクトリ
-const imageDir = path.resolve(__dirname, "src/assets/images");
+async function waitForStaticCopy(
+  dir: string,
+  minFiles = 1,
+  timeout = 5000,
+): Promise<void> {
+  const start = Date.now();
+  while (true) {
+    try {
+      const files = await fs.readdir(dir);
+      if (files.length >= minFiles) break;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
 
-// 画像ファイルを全探索して、inputに渡す
-const imageFiles = glob
-  .sync(`${imageDir}/**/*.{png,jpg,jpeg,webp,avif}`)
-  .map((file) => path.resolve(file))
-  .filter((file) => file.startsWith(imageDir));
+    if (Date.now() - start > timeout) {
+      throw new Error(
+        `Timed out waiting for viteStaticCopy to finish (${timeout}ms)`,
+      );
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+}
 
-// ファイルパスをキーにしてマップを作成（後でassetFileNamesで使用）
-const imagePathMap = new Map(
-  imageFiles.map((file) => {
-    const relativePath = path.relative(imageDir, file).replace(/\\/g, "/");
-    return [path.basename(file), relativePath];
-  }),
-);
+// Sharp最適化プラグイン
+function sharpOptimizer(): Plugin {
+  return {
+    name: "vite-plugin-sharp-optimizer",
+    async closeBundle() {
+      const outDir = path.resolve(__dirname, "../shopify-theme/assets/images");
 
-const imageInputEntries = Object.fromEntries(
-  imageFiles.map((file, i) => [`image_${i}`, file]),
-);
+      // viteStaticCopyの完了を待つ（ポーリング監視）
+      await waitForStaticCopy(outDir, 1);
 
-const rollupInput = {
-  main: "./src/main.ts",
-  style: "./src/main.scss",
-  ...imageInputEntries,
-};
+      const processImage = async (filePath: string) => {
+        const ext = path.extname(filePath).toLowerCase();
+        if (![".jpg", ".jpeg", ".png", ".webp", ".avif"].includes(ext)) return;
+
+        const originalSize = (await fs.stat(filePath)).size;
+        const buffer = await fs.readFile(filePath);
+        let optimized = sharp(buffer);
+
+        if (ext === ".jpg" || ext === ".jpeg") {
+          optimized = optimized.jpeg({ quality: 82, progressive: true });
+        } else if (ext === ".png") {
+          optimized = optimized.png({ quality: 80, compressionLevel: 9 });
+        } else if (ext === ".webp") {
+          optimized = optimized.webp({ quality: 80, effort: 5 });
+        } else if (ext === ".avif") {
+          optimized = optimized.avif({ quality: 75, effort: 5 });
+        }
+
+        const tempFile = `${filePath}.tmp`;
+        await optimized.toFile(tempFile);
+        const newSize = (await fs.stat(tempFile)).size;
+        await fs.rename(tempFile, filePath);
+
+        const reduction = ((1 - newSize / originalSize) * 100).toFixed(1);
+        console.log(
+          `  ${path.relative(outDir, filePath)}: ${(originalSize / 1024).toFixed(1)}KB → ${(newSize / 1024).toFixed(1)}KB (-${reduction}%)`,
+        );
+      };
+
+      const walk = async (dir: string) => {
+        try {
+          const entries = await fs.readdir(dir, { withFileTypes: true });
+          for (const entry of entries) {
+            const fullPath = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+              await walk(fullPath);
+            } else {
+              await processImage(fullPath);
+            }
+          }
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+          throw error;
+        }
+      };
+
+      await walk(outDir);
+      console.log("✨ Images optimized with Sharp");
+    },
+  };
+}
 
 export default defineConfig({
   plugins: [
     shopify(),
     checker({ typescript: true }),
-    ViteImageOptimizer({
-      include: /\.(jpg|jpeg|png|webp|avif)$/i,
-      jpg: { quality: 82, progressive: true },
-      png: { quality: 80, compressionLevel: 9 },
-      webp: { quality: 80, effort: 5 },
-      avif: { quality: 75, effort: 5 },
+    viteStaticCopy({
+      targets: [
+        {
+          src: "assets/images/**/*",
+          dest: "images",
+          rename: (fileName, fileExtension, fullPath) => {
+            const match = fullPath.match(/assets\/images\/(.+)/);
+            return match ? match[1] : fileName + fileExtension;
+          },
+        },
+      ],
     }),
+    {
+      ...sharpOptimizer(),
+      enforce: "post",
+    },
   ],
   root: "./src",
   build: {
     outDir: "../../shopify-theme/assets",
     emptyOutDir: false,
     rollupOptions: {
-      input: rollupInput,
+      input: {
+        main: "./src/assets/scripts/main.ts",
+        style: "./src/assets/styles/main.scss",
+      },
       output: {
-        assetFileNames: (info) => {
-          // 画像ファイルの場合はディレクトリ構造を維持
-          if (info.name && /\.(jpg|jpeg|png|webp|avif|svg)$/i.test(info.name)) {
-            const relativePath = imagePathMap.get(info.name);
-            if (relativePath) {
-              // 拡張子を除去してハッシュを挿入
-              const pathWithoutExt = relativePath.replace(/\.[^/.]+$/, "");
-              return `images/${pathWithoutExt}.[hash][extname]`;
-            }
-          }
-
-          // その他のアセット（CSS等）はデフォルト
-          return "[name].[hash][extname]";
-        },
+        entryFileNames: "[name].js",
+        chunkFileNames: "[name].js",
+        assetFileNames: "[name].[ext]",
       },
     },
   },
