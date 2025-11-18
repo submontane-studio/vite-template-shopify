@@ -1,0 +1,19 @@
+{
+  "name": "vite-template-shopify",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "vite:dev": "cd vite-app && vite build --watch",
+    "shopify:dev": "cd shopify-theme && shopify theme dev",
+    "dev": "concurrently \"npm run vite:dev\" \"npm run shopify:dev\"",
+    "build": "cd vite-app && vite build"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "concurrently": "^9.2.1"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
