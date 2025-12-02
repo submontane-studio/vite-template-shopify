@@ -1,0 +1,265 @@
+{% comment %}
+  カスタムポストタイプのセクション
+  Pageリソースを使用してカスタムコンテンツを表示
+{% endcomment %}
+
+<article class="custom-post" data-section-id="{{ section.id }}">
+  <div class="custom-post__container">
+
+    {%- comment -%} ヘッダー部分 {%- endcomment -%}
+    <header class="custom-post__header">
+      <h1 class="custom-post__title">{{ page.title }}</h1>
+
+      {%- comment -%} Metafieldsから公開日を取得 {%- endcomment -%}
+      {% if page.metafields.custom.published_date %}
+        <time class="custom-post__date" datetime="{{ page.metafields.custom.published_date }}">
+          {{ page.metafields.custom.published_date | date: "%Y年%m月%d日" }}
+        </time>
+      {% endif %}
+
+      {%- comment -%} カテゴリー（Metafields） {%- endcomment -%}
+      {% if page.metafields.custom.category %}
+        <span class="custom-post__category">
+          {{ page.metafields.custom.category }}
+        </span>
+      {% endif %}
+    </header>
+
+    {%- comment -%} アイキャッチ画像（Metafields） {%- endcomment -%}
+    {% if page.metafields.custom.featured_image %}
+      <div class="custom-post__featured-image">
+        {% assign featured_image = page.metafields.custom.featured_image %}
+        <img
+          src="{{ featured_image | image_url: width: 1200 }}"
+          srcset="
+            {{ featured_image | image_url: width: 600 }} 600w,
+            {{ featured_image | image_url: width: 900 }} 900w,
+            {{ featured_image | image_url: width: 1200 }} 1200w
+          "
+          sizes="(max-width: 768px) 100vw, 1200px"
+          alt="{{ page.title }}"
+          loading="lazy"
+        >
+      </div>
+    {% endif %}
+
+    {%- comment -%} コンテンツ本文 {%- endcomment -%}
+    <div class="custom-post__content">
+      {{ page.content }}
+    </div>
+
+    {%- comment -%} 追加のカスタムフィールド {%- endcomment -%}
+    {% if page.metafields.custom.author %}
+      <div class="custom-post__author">
+        <strong>著者:</strong> {{ page.metafields.custom.author }}
+      </div>
+    {% endif %}
+
+    {% if page.metafields.custom.tags %}
+      <div class="custom-post__tags">
+        {% assign tags = page.metafields.custom.tags | split: ',' %}
+        {% for tag in tags %}
+          <span class="tag">{{ tag | strip }}</span>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {%- comment -%} 関連記事（Metafields - リファレンスリスト） {%- endcomment -%}
+    {% if page.metafields.custom.related_posts %}
+      <aside class="custom-post__related">
+        <h2>関連記事</h2>
+        <ul class="related-posts">
+          {% for related_page in page.metafields.custom.related_posts.value %}
+            <li>
+              <a href="{{ related_page.url }}">
+                {{ related_page.title }}
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      </aside>
+    {% endif %}
+
+  </div>
+</article>
+
+<style>
+  .custom-post {
+    padding: 2rem 0;
+  }
+
+  .custom-post__container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+
+  .custom-post__header {
+    margin-bottom: 2rem;
+    border-bottom: 1px solid #e5e5e5;
+    padding-bottom: 1rem;
+  }
+
+  .custom-post__title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    line-height: 1.2;
+  }
+
+  .custom-post__date {
+    display: inline-block;
+    color: #666;
+    font-size: 0.9rem;
+    margin-right: 1rem;
+  }
+
+  .custom-post__category {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    background: #f0f0f0;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+
+  .custom-post__featured-image {
+    margin-bottom: 2rem;
+  }
+
+  .custom-post__featured-image img {
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+  }
+
+  .custom-post__content {
+    font-size: 1.1rem;
+    line-height: 1.8;
+    margin-bottom: 2rem;
+  }
+
+  .custom-post__content h2 {
+    font-size: 1.8rem;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+  }
+
+  .custom-post__content h3 {
+    font-size: 1.4rem;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .custom-post__content p {
+    margin-bottom: 1rem;
+  }
+
+  .custom-post__author {
+    padding: 1rem;
+    background: #f9f9f9;
+    border-left: 3px solid #333;
+    margin-bottom: 1rem;
+  }
+
+  .custom-post__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .custom-post__tags .tag {
+    padding: 0.25rem 0.75rem;
+    background: #e8f4f8;
+    color: #0066cc;
+    border-radius: 20px;
+    font-size: 0.85rem;
+  }
+
+  .custom-post__related {
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 2px solid #e5e5e5;
+  }
+
+  .custom-post__related h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .related-posts {
+    list-style: none;
+    padding: 0;
+  }
+
+  .related-posts li {
+    margin-bottom: 0.75rem;
+  }
+
+  .related-posts a {
+    color: #0066cc;
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .related-posts a:hover {
+    text-decoration: underline;
+  }
+
+  @media (max-width: 768px) {
+    .custom-post__title {
+      font-size: 1.8rem;
+    }
+
+    .custom-post__content {
+      font-size: 1rem;
+    }
+  }
+</style>
+
+{% schema %}
+{
+  "name": "Custom Post",
+  "tag": "section",
+  "class": "section-custom-post",
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "このセクションは、カスタムポストタイプとして使用するためのテンプレートです。Pageリソースのmetafieldsを使用してカスタムフィールドを追加できます。"
+    },
+    {
+      "type": "header",
+      "content": "必要なMetafields定義"
+    },
+    {
+      "type": "paragraph",
+      "content": "以下のmetafieldsをShopify管理画面で定義してください："
+    },
+    {
+      "type": "paragraph",
+      "content": "1. custom.published_date (date) - 公開日"
+    },
+    {
+      "type": "paragraph",
+      "content": "2. custom.category (single_line_text_field) - カテゴリー"
+    },
+    {
+      "type": "paragraph",
+      "content": "3. custom.featured_image (file_reference) - アイキャッチ画像"
+    },
+    {
+      "type": "paragraph",
+      "content": "4. custom.author (single_line_text_field) - 著者名"
+    },
+    {
+      "type": "paragraph",
+      "content": "5. custom.tags (single_line_text_field) - タグ（カンマ区切り）"
+    },
+    {
+      "type": "paragraph",
+      "content": "6. custom.related_posts (list.page_reference) - 関連記事"
+    }
+  ]
+}
+{% endschema %}

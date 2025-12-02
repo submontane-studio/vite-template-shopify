@@ -1,0 +1,446 @@
+{% comment %}
+  カスタムポストタイプ一覧表示セクション
+  Pagesから特定のタグを持つものを一覧表示
+{% endcomment %}
+
+<div class="custom-posts-archive" data-section-id="{{ section.id }}">
+  <div class="custom-posts-archive__container">
+
+    {%- comment -%} ヘッダー {%- endcomment -%}
+    <header class="archive-header">
+      <h1 class="archive-title">{{ section.settings.archive_title }}</h1>
+      {% if section.settings.archive_description != blank %}
+        <p class="archive-description">{{ section.settings.archive_description }}</p>
+      {% endif %}
+    </header>
+
+    {%- comment -%} カテゴリーフィルター {%- endcomment -%}
+    {% if section.settings.show_categories %}
+      <nav class="archive-categories">
+        <button class="category-btn active" data-category="all">すべて</button>
+        {% assign categories = section.settings.categories | split: ',' %}
+        {% for category in categories %}
+          <button class="category-btn" data-category="{{ category | strip | handleize }}">
+            {{ category | strip }}
+          </button>
+        {% endfor %}
+      </nav>
+    {% endif %}
+
+    {%- comment -%} 記事一覧 {%- endcomment -%}
+    <div class="posts-grid">
+      {% assign posts_tag = section.settings.posts_tag | default: 'custom-post' %}
+      {% assign all_pages = pages | where: "template_suffix", "custom-post" %}
+
+      {%- comment -%}
+        実際の実装では、metafieldsで絞り込んだり、
+        Storefront API + App Proxyを使用してより柔軟なフィルタリングが可能です
+      {%- endcomment -%}
+
+      {% if section.settings.use_manual_selection %}
+        {%- comment -%} 手動選択モード {%- endcomment -%}
+        {% for block in section.blocks %}
+          {% if block.type == 'post' %}
+            {% assign post_page = pages[block.settings.page_handle] %}
+            {% if post_page %}
+              {% render 'custom-post-card',
+                page: post_page,
+                show_excerpt: section.settings.show_excerpt,
+                show_date: section.settings.show_date,
+                show_category: section.settings.show_category
+              %}
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+      {% else %}
+        {%- comment -%} 自動表示モード（最新の記事を表示） {%- endcomment -%}
+        {% assign posts_limit = section.settings.posts_limit | default: 12 %}
+        {% assign counter = 0 %}
+        {% for page in all_pages %}
+          {% if counter < posts_limit %}
+            <article class="post-card" data-category="{{ page.metafields.custom.category | handleize }}">
+              <a href="{{ page.url }}" class="post-card__link">
+
+                {%- comment -%} アイキャッチ画像 {%- endcomment -%}
+                {% if page.metafields.custom.featured_image %}
+                  <div class="post-card__image">
+                    <img
+                      src="{{ page.metafields.custom.featured_image | image_url: width: 600 }}"
+                      srcset="
+                        {{ page.metafields.custom.featured_image | image_url: width: 400 }} 400w,
+                        {{ page.metafields.custom.featured_image | image_url: width: 600 }} 600w
+                      "
+                      sizes="(max-width: 768px) 100vw, 400px"
+                      alt="{{ page.title }}"
+                      loading="lazy"
+                    >
+                  </div>
+                {% endif %}
+
+                <div class="post-card__content">
+                  {%- comment -%} カテゴリー {%- endcomment -%}
+                  {% if section.settings.show_category and page.metafields.custom.category %}
+                    <span class="post-card__category">
+                      {{ page.metafields.custom.category }}
+                    </span>
+                  {% endif %}
+
+                  {%- comment -%} タイトル {%- endcomment -%}
+                  <h2 class="post-card__title">{{ page.title }}</h2>
+
+                  {%- comment -%} 日付 {%- endcomment -%}
+                  {% if section.settings.show_date and page.metafields.custom.published_date %}
+                    <time class="post-card__date" datetime="{{ page.metafields.custom.published_date }}">
+                      {{ page.metafields.custom.published_date | date: "%Y年%m月%d日" }}
+                    </time>
+                  {% endif %}
+
+                  {%- comment -%} 抜粋 {%- endcomment -%}
+                  {% if section.settings.show_excerpt %}
+                    <p class="post-card__excerpt">
+                      {{ page.content | strip_html | truncate: 120 }}
+                    </p>
+                  {% endif %}
+
+                  {%- comment -%} 著者 {%- endcomment -%}
+                  {% if section.settings.show_author and page.metafields.custom.author %}
+                    <span class="post-card__author">
+                      {{ page.metafields.custom.author }}
+                    </span>
+                  {% endif %}
+                </div>
+              </a>
+            </article>
+            {% assign counter = counter | plus: 1 %}
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+    </div>
+
+    {%- comment -%} 記事が見つからない場合 {%- endcomment -%}
+    {% if all_pages.size == 0 and section.blocks.size == 0 %}
+      <div class="archive-empty">
+        <p>{{ section.settings.empty_message | default: "記事が見つかりませんでした。" }}</p>
+      </div>
+    {% endif %}
+
+  </div>
+</div>
+
+<style>
+  .custom-posts-archive {
+    padding: 3rem 0;
+  }
+
+  .custom-posts-archive__container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+
+  .archive-header {
+    text-align: center;
+    margin-bottom: 3rem;
+    padding-bottom: 2rem;
+    border-bottom: 2px solid #e5e5e5;
+  }
+
+  .archive-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+  }
+
+  .archive-description {
+    font-size: 1.1rem;
+    color: #666;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .archive-categories {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: center;
+    margin-bottom: 2rem;
+  }
+
+  .category-btn {
+    padding: 0.5rem 1.25rem;
+    background: #f5f5f5;
+    border: 2px solid transparent;
+    border-radius: 25px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .category-btn:hover {
+    background: #e8e8e8;
+  }
+
+  .category-btn.active {
+    background: #333;
+    color: white;
+    border-color: #333;
+  }
+
+  .posts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 2rem;
+    margin-bottom: 3rem;
+  }
+
+  .post-card {
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .post-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  }
+
+  .post-card__link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .post-card__image {
+    width: 100%;
+    height: 240px;
+    overflow: hidden;
+    background: #f0f0f0;
+  }
+
+  .post-card__image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+  }
+
+  .post-card:hover .post-card__image img {
+    transform: scale(1.05);
+  }
+
+  .post-card__content {
+    padding: 1.5rem;
+  }
+
+  .post-card__category {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    background: #f0f0f0;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.75rem;
+  }
+
+  .post-card__title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.4;
+    margin-bottom: 0.5rem;
+    color: #333;
+  }
+
+  .post-card__date {
+    display: block;
+    font-size: 0.85rem;
+    color: #999;
+    margin-bottom: 0.75rem;
+  }
+
+  .post-card__excerpt {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: #666;
+    margin-bottom: 0.75rem;
+  }
+
+  .post-card__author {
+    display: block;
+    font-size: 0.85rem;
+    color: #999;
+    font-style: italic;
+  }
+
+  .archive-empty {
+    text-align: center;
+    padding: 3rem;
+    color: #999;
+  }
+
+  @media (max-width: 768px) {
+    .posts-grid {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
+    .archive-title {
+      font-size: 1.8rem;
+    }
+
+    .post-card__image {
+      height: 200px;
+    }
+  }
+</style>
+
+<script>
+  // カテゴリーフィルター機能
+  document.addEventListener('DOMContentLoaded', function() {
+    const categoryBtns = document.querySelectorAll('.category-btn');
+    const postCards = document.querySelectorAll('.post-card');
+
+    categoryBtns.forEach(btn => {
+      btn.addEventListener('click', function() {
+        const selectedCategory = this.dataset.category;
+
+        // ボタンのアクティブ状態を更新
+        categoryBtns.forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+
+        // 記事をフィルタリング
+        postCards.forEach(card => {
+          if (selectedCategory === 'all') {
+            card.style.display = 'block';
+          } else {
+            const cardCategory = card.dataset.category;
+            card.style.display = cardCategory === selectedCategory ? 'block' : 'none';
+          }
+        });
+      });
+    });
+  });
+</script>
+
+{% schema %}
+{
+  "name": "Custom Posts Archive",
+  "tag": "section",
+  "class": "section-custom-posts-archive",
+  "settings": [
+    {
+      "type": "text",
+      "id": "archive_title",
+      "label": "アーカイブタイトル",
+      "default": "記事一覧"
+    },
+    {
+      "type": "textarea",
+      "id": "archive_description",
+      "label": "説明文"
+    },
+    {
+      "type": "checkbox",
+      "id": "use_manual_selection",
+      "label": "手動で記事を選択",
+      "default": false,
+      "info": "オンにすると、下のブロックで手動選択した記事のみを表示します"
+    },
+    {
+      "type": "range",
+      "id": "posts_limit",
+      "label": "表示する記事数",
+      "min": 3,
+      "max": 50,
+      "step": 1,
+      "default": 12,
+      "info": "自動表示モードの場合のみ有効"
+    },
+    {
+      "type": "text",
+      "id": "posts_tag",
+      "label": "記事タグ",
+      "default": "custom-post",
+      "info": "この値はtemplate_suffixで判定しています"
+    },
+    {
+      "type": "header",
+      "content": "表示オプション"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_excerpt",
+      "label": "抜粋を表示",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_date",
+      "label": "公開日を表示",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_category",
+      "label": "カテゴリーを表示",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_author",
+      "label": "著者を表示",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "カテゴリーフィルター"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_categories",
+      "label": "カテゴリーフィルターを表示",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "categories",
+      "label": "カテゴリー",
+      "info": "カンマ区切りで入力（例: ニュース,ブログ,チュートリアル）",
+      "default": "ニュース,ブログ,チュートリアル"
+    },
+    {
+      "type": "header",
+      "content": "その他"
+    },
+    {
+      "type": "text",
+      "id": "empty_message",
+      "label": "記事がない場合のメッセージ",
+      "default": "記事が見つかりませんでした。"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "post",
+      "name": "記事",
+      "settings": [
+        {
+          "type": "text",
+          "id": "page_handle",
+          "label": "ページハンドル",
+          "info": "表示する記事のハンドルを入力してください"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Custom Posts Archive"
+    }
+  ]
+}
+{% endschema %}

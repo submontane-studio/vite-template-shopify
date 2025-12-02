@@ -1,0 +1,10 @@
+{
+  "name": "Custom Post",
+  "sections": {
+    "main": {
+      "type": "custom-post",
+      "settings": {}
+    }
+  },
+  "order": ["main"]
+}

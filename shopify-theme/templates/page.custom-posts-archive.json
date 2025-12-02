@@ -1,0 +1,10 @@
+{
+  "name": "Custom Posts Archive",
+  "sections": {
+    "main": {
+      "type": "custom-posts-archive",
+      "settings": {}
+    }
+  },
+  "order": ["main"]
+}
