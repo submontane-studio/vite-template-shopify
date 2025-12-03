@@ -1,0 +1,95 @@
+{% comment %}
+  Metaobjectsを使用したスタッフ紹介の例
+
+  Shopify管理画面で「Staff」というMetaobject定義を作成
+{% endcomment %}
+
+<div class="staff-list">
+  <h2>スタッフ紹介</h2>
+
+  {%- comment -%}
+    すべてのスタッフMetaobjectを取得
+  {%- endcomment -%}
+  {% assign all_staff = shop.metaobjects.staff.values %}
+
+  <div class="staff-grid">
+    {% for staff in all_staff %}
+      <article class="staff-card">
+        {%- comment -%} プロフィール写真 {%- endcomment -%}
+        {% if staff.photo %}
+          <img
+            src="{{ staff.photo | image_url: width: 300 }}"
+            alt="{{ staff.name }}"
+            class="staff-photo"
+          >
+        {% endif %}
+
+        {%- comment -%} 名前と役職 {%- endcomment -%}
+        <h3>{{ staff.name }}</h3>
+        <p class="position">{{ staff.position }}</p>
+
+        {%- comment -%} 自己紹介 {%- endcomment -%}
+        <div class="bio">
+          {{ staff.bio }}
+        </div>
+
+        {%- comment -%} SNSリンク {%- endcomment -%}
+        {% if staff.twitter %}
+          <a href="{{ staff.twitter }}" target="_blank">Twitter</a>
+        {% endif %}
+
+        {%- comment -%} 担当プロダクト（リレーション） {%- endcomment -%}
+        {% if staff.products %}
+          <div class="staff-products">
+            <h4>担当商品</h4>
+            {% for product in staff.products.value %}
+              <a href="{{ product.url }}">{{ product.title }}</a>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </article>
+    {% endfor %}
+  </div>
+</div>
+
+{% comment %}
+  Metaobject定義例（JSON）:
+
+  {
+    "name": "Staff",
+    "type": "staff",
+    "fieldsets": [
+      {
+        "name": "name",
+        "key": "name",
+        "type": "single_line_text_field",
+        "required": true
+      },
+      {
+        "name": "position",
+        "key": "position",
+        "type": "single_line_text_field"
+      },
+      {
+        "name": "bio",
+        "key": "bio",
+        "type": "multi_line_text_field"
+      },
+      {
+        "name": "photo",
+        "key": "photo",
+        "type": "file_reference"
+      },
+      {
+        "name": "twitter",
+        "key": "twitter",
+        "type": "url"
+      },
+      {
+        "name": "products",
+        "key": "products",
+        "type": "list.product_reference"
+      }
+    ]
+  }
+{% endcomment %}
